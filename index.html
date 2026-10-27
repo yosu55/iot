@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pedidos Express - Vendedor Ambulante</title>
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --card-bg: #1e293b;
+            --primary: #f97316; /* Naranja ambulante */
+            --green: #22c55e;
+            --red: #ef4444;
+            --text: #f8fafc;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text);
+            margin: 0;
+            padding: 15px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 480px;
+            background-color: var(--card-bg);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+
+        h1, h2 { text-align: center; color: var(--primary); margin-top: 0; }
+
+        .card {
+            background-color: #334155;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+
+        label { display: block; margin-bottom: 8px; font-weight: bold; }
+        select {
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            border: none;
+            background: #0f172a;
+            color: white;
+            font-size: 1em;
+            margin-bottom: 15px;
+        }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 1em;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .btn-primary { background-color: var(--primary); color: white; }
+        .btn-green { background-color: var(--green); color: white; margin-bottom: 8px;}
+        .btn-red { background-color: var(--red); color: white; }
+
+        .status-box {
+            text-align: center;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: bold;
+            background: #020617;
+            margin-top: 10px;
+            color: #38bdf8;
+        }
+
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🛒 Pedido a Vendedor Ambulante</h1>
+
+    <!-- VISTA 1: INTERFAZ DEL CLIENTE -->
+    <div id="vista-cliente" class="card">
+        <h2>Solicitar Producto</h2>
+        <label for="producto">Selecciona un producto:</label>
+        <select id="producto">
+            <option value="Empanada de Carne ($1.50)">Empanada de Carne - Bs. 1.50</option>
+            <option value="Jugo Natural Helado ($1.00)">Jugo Natural Helado - Bs. 1.00</option>
+            <option value="Café Caliente ($0.80)">Café Caliente - Bs. 0.80</option>
+        </select>
+
+        <button class="btn-primary" onclick="pedirProducto()">📍 Enviar Pedido con mi Ubicación</button>
+        <div id="estado-cliente" class="status-box hidden">Esperando respuesta del vendedor...</div>
+    </div>
+
+    <!-- VISTA 2: INTERFAZ DEL VENDEDOR (Panel de Control) -->
+    <div id="vista-vendedor" class="card hidden">
+        <h2>🔔 Panel del Vendedor</h2>
+        <p><strong>Producto Pedido:</strong> <span id="vend-prod">-</span></p>
+        <p><strong>Distancia del Cliente:</strong> <span id="vend-dist">-</span></p>
+
+        <button class="btn-green" onclick="responderPedido(true)">✅ Aceptar e Ir donde el Cliente</button>
+        <button class="btn-red" onclick="responderPedido(false)">❌ Rechazar Pedido</button>
+    </div>
+</div>
+
+<script>
+    // Posición Simulada del Vendedor (Ejemplo: Centro de la Ciudad)
+    const posVendedor = { lat: -17.7833, lng: -63.1821 }; 
+    let posCliente = null;
+
+    function pedirProducto() {
+        const prod = document.getElementById('producto').value;
+        const estadoClient = document.getElementById('estado-cliente');
+
+        estadoClient.classList.remove('hidden');
+        estadoClient.innerText = "Obteniendo tu ubicación GPS...";
+
+        // Capturar Ubicación Real del Cliente usando Geolocation API
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    posCliente = {
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude
+                    };
+
+                    // Calcular distancia
+                    const distKm = calcularDistancia(posVendedor.lat, posVendedor.lng, posCliente.lat, posCliente.lng).toFixed(2);
+
+                    estadoClient.innerText = `Solicitud enviada. Distancia al vendedor: ${distKm} km. Esperando confirmación...`;
+
+                    // Mostrar notificación al panel del vendedor
+                    mostrarPanelVendedor(prod, distKm);
+                },
+                (error) => {
+                    alert("Por favor activa la ubicación GPS de tu navegador para hacer el pedido.");
+                    estadoClient.innerText = "Error: Ubicación no permitida.";
+                }
+            );
+        } else {
+            alert("Tu navegador no soporta geolocalización.");
+        }
+    }
+
+    function mostrarPanelVendedor(producto, distancia) {
+        document.getElementById('vista-vendedor').classList.remove('hidden');
+        document.getElementById('vend-prod').innerText = producto;
+        document.getElementById('vend-dist').innerText = `${distancia} km de distancia`;
+    }
+
+    function responderPedido(aceptado) {
+        const estadoClient = document.getElementById('estado-cliente');
+
+        if (aceptado) {
+            estadoClient.innerText = "¡El vendedor ACEPTÓ tu pedido! Se está desplazando hacia tu ubicación. 🏃‍♂️💨";
+            estadoClient.style.color = "#22c55e";
+        } else {
+            estadoClient.innerText = "El vendedor RECHAZÓ el pedido (fuera de rango o sin stock). ❌";
+            estadoClient.style.color = "#ef4444";
+        }
+    }
+
+    // Fórmula Haversine para calcular distancia entre 2 coordenadas GPS
+    function calcularDistancia(lat1, lon1, lat2, lon2) {
+        const R = 6371; // Radio de la Tierra en Km
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                  Math.sin(dLon/2) * Math.sin(dLon/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return R * c; // Distancia en km
+    }
+</script>
+
+</body>
+</html>
